@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Fractal Explorer</title>
+  <style>
+    body {
+      text-align: center;
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #fff;
+    }
+    canvas {
+      border: 1px solid #333;
+      cursor: grab;
+    }
+    select {
+      margin: 10px;
+      padding: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Fractal Explorer</h1>
+  <div>
+    <label>Fractal Type:</label>
+    <select id="fractalMode">
+      <option value="mandelbrot">Mandelbrot</option>
+      <option value="julia">Julia</option>
+    </select>
+
+    <label>Color Map:</label>
+    <select id="colorMap">
+      <option value="inferno" selected>inferno</option>
+      <option value="plasma">plasma</option>
+      <option value="viridis">viridis</option>
+      <option value="magma">magma</option>
+      <option value="cividis">cividis</option>
+      <option value="twilight">twilight</option>
+    </select>
+  </div>
+  <canvas id="fractalCanvas" width="800" height="600"></canvas>
+
+  <script>
+    const canvas = document.getElementById('fractalCanvas');
+    const ctx = canvas.getContext('2d');
+  
+    let width = canvas.width;
+    let height = canvas.height;
+    let zoom = 1.0;
+    let xCenter = 0.0;
+    let yCenter = 0.0;
+    let mode = 'mandelbrot';
+    let colorMap = 'inferno';  // Default colormap
+  
+    const zoomFactor = 1.5;
+    let isDragging = false;
+    let lastX, lastY;
+  
+    function fetchFractal() {
+      const url = `/fractal?width=${width}&height=${height}&zoom=${zoom}&x_center=${xCenter}&y_center=${yCenter}&mode=${mode}&max_iter=200&colormap=${colorMap}`;
+      fetch(url)
+        .then(res => res.blob())
+        .then(blob => createImageBitmap(blob))
+        .then(imgBitmap => {
+          ctx.clearRect(0, 0, width, height);
+          ctx.drawImage(imgBitmap, 0, 0);
+        });
+    }
+  
+    fetchFractal();
+  
+    // Prevent context menu on right click
+    canvas.addEventListener('contextmenu', e => e.preventDefault());
+  
+    canvas.addEventListener('mousedown', e => {
+      e.preventDefault();
+  
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+  
+      const relX = (mouseX / width - 0.5) * 3.0 / zoom;
+      const relY = (mouseY / height - 0.5) * 2.0 / zoom;
+  
+      if (e.button === 0) {
+        // Left click = Zoom out
+        zoom /= zoomFactor;
+        xCenter -= relX * (1 - zoomFactor);
+        yCenter -= relY * (1 - zoomFactor);
+        fetchFractal();
+      } else if (e.button === 2) {
+        // Right click = Zoom in
+        zoom *= zoomFactor;
+        xCenter += relX * (1 - 1 / zoomFactor);
+        yCenter += relY * (1 - 1 / zoomFactor);
+        fetchFractal();
+      }
+  
+      if (e.button === 0) {
+        isDragging = true;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        canvas.style.cursor = 'grabbing';
+      }
+    });
+  
+    canvas.addEventListener('mouseup', () => {
+      isDragging = false;
+      canvas.style.cursor = 'grab';
+    });
+  
+    canvas.addEventListener('mousemove', e => {
+      if (!isDragging) return;
+  
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+  
+      xCenter -= dx / width * 3.0 / zoom;
+      yCenter -= dy / height * 2.0 / zoom;
+  
+      lastX = e.clientX;
+      lastY = e.clientY;
+  
+      fetchFractal();
+    });
+  
+    document.getElementById('fractalMode').addEventListener('change', e => {
+      mode = e.target.value;
+      fetchFractal();
+    });
+  
+    document.getElementById('colorMap').addEventListener('change', e => {
+      colorMap = e.target.value;
+      fetchFractal();
+    });
+  </script>
+  
+
+</body>
+</html>
